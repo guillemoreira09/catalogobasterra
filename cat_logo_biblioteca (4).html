@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catálogo - Biblioteca Escolar</title>
+    
+    <!-- Tailwind CSS para el diseño -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- FontAwesome para íconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- SheetJS para procesar archivos Excel en el navegador -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6; 
+        }
+        select {
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 1rem center;
+            background-size: 1em;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col text-gray-800">
+
+    <header class="bg-indigo-700 text-white shadow-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <i class="fa-solid fa-book-open-reader text-3xl"></i>
+                    <div>
+                        <h1 class="text-2xl font-bold tracking-tight">Biblioteca "El Saber"</h1>
+                        <p class="text-indigo-200 text-sm hidden sm:block">Catálogo Escolar Digital</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+        
+        <section class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 mb-8">
+            <h2 class="text-lg font-semibold mb-4 text-gray-700"><i class="fa-solid fa-magnifying-glass mr-2"></i>Buscar y Filtrar</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                <div class="lg:col-span-1">
+                    <label for="searchInput" class="block text-xs font-medium text-gray-500 mb-1">Buscar por título o autor</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fa-solid fa-search text-gray-400"></i>
+                        </div>
+                        <input type="text" id="searchInput" class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-sm transition-colors" placeholder="Ej. Principito...">
+                    </div>
+                </div>
+
+                <div>
+                    <label for="themeFilter" class="block text-xs font-medium text-gray-500 mb-1">Tema / Categoría</label>
+                    <select id="themeFilter" class="block w-full pl-3 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-sm transition-colors bg-white">
+                        <option value="">Todos los temas</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="authorFilter" class="block text-xs font-medium text-gray-500 mb-1">Autor</label>
+                    <select id="authorFilter" class="block w-full pl-3 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-sm transition-colors bg-white">
+                        <option value="">Todos los autores</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="publisherFilter" class="block text-xs font-medium text-gray-500 mb-1">Editorial</label>
+                    <select id="publisherFilter" class="block w-full pl-3 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-sm transition-colors bg-white">
+                        <option value="">Todas las editoriales</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="collectionFilter" class="block text-xs font-medium text-gray-500 mb-1">Colección</label>
+                    <select id="collectionFilter" class="block w-full pl-3 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-sm transition-colors bg-white">
+                        <option value="">Todas las colecciones</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="mt-4 flex justify-between items-center text-sm">
+                <span id="resultsCount" class="text-gray-600 font-medium">Conectando con Google Sheets...</span>
+                <button id="resetFilters" class="text-indigo-600 hover:text-indigo-800 font-medium transition-colors">
+                    <i class="fa-solid fa-rotate-left mr-1"></i>Limpiar filtros
+                </button>
+            </div>
+        </section>
+
+        <div id="booksGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        </div>
+
+        <div id="noResults" class="hidden text-center py-12">
+            <i class="fa-solid fa-book-journal-whills text-5xl text-gray-300 mb-4"></i>
+            <h3 class="text-lg font-medium text-gray-900">No se encontraron libros</h3>
+            <p class="text-gray-500 mt-1">Intenta ajustando tus filtros o términos de búsqueda.</p>
+        </div>
+
+    </main>
+
+    <footer class="bg-gray-800 text-gray-300 py-6 text-center text-sm mt-auto">
+        <p>&copy; 2026 Biblioteca Escolar "El Saber". Todos los derechos reservados.</p>
+    </footer>
+
+    <script>
+        // AQUÍ ESTÁ TU ENLACE EXACTO (NO TOCAR)
+        const GOOGLE_SHEETS_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSVQv398d6p17zuGbzg34ZD3GD-EvHe-KqcQEcC52MLvDvcuaOSPXDRXMyGBnAycI5m3pLNLIk_Zw1Y/pub?output=csv"; 
+        
+        let libraryData = []; 
+        const coverColors = ["4f46e5", "059669", "ea580c", "be123c", "0284c7", "7e22ce", "b45309", "1d4ed8"];
+
+        const booksGrid = document.getElementById('booksGrid');
+        const noResults = document.getElementById('noResults');
+        const resultsCount = document.getElementById('resultsCount');
+        
+        const searchInput = document.getElementById('searchInput');
+        const themeFilter = document.getElementById('themeFilter');
+        const authorFilter = document.getElementById('authorFilter');
+        const publisherFilter = document.getElementById('publisherFilter');
+        const collectionFilter = document.getElementById('collectionFilter');
+        const resetBtn = document.getElementById('resetFilters');
+
+        function populateFilters() {
+            const themes = [...new Set(libraryData.map(book => book.theme))].sort();
+            const authors = [...new Set(libraryData.map(book => book.author))].sort();
+            const publishers = [...new Set(libraryData.map(book => book.publisher))].sort();
+            const collections = [...new Set(libraryData.map(book => book.collection))].sort();
+
+            const addOptions = (selectElement, optionsArray) => {
+                // Limpiar opciones anteriores pero mantener la primera (Todas)
+                while(selectElement.options.length > 1) { selectElement.remove(1); }
+                optionsArray.forEach(option => {
+                    const el = document.createElement('option');
+                    el.value = option; el.textContent = option;
+                    selectElement.appendChild(el);
+                });
+            };
+
+            addOptions(themeFilter, themes);
+            addOptions(authorFilter, authors);
+            addOptions(publisherFilter, publishers);
+            addOptions(collectionFilter, collections);
+        }
+
+        function renderBooks(books) {
+            booksGrid.innerHTML = ''; 
+
+            if (books.length === 0) {
+                booksGrid.classList.add('hidden');
+                noResults.classList.remove('hidden');
+                resultsCount.textContent = `0 resultados`;
+                return;
+            }
+
+            booksGrid.classList.remove('hidden');
+            noResults.classList.add('hidden');
+            resultsCount.textContent = `Mostrando ${books.length} libro${books.length !== 1 ? 's' : ''}`;
+
+            books.forEach(book => {
+                const card = document.createElement('article');
+                card.className = 'bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow border border-gray-100 overflow-hidden flex flex-col h-full';
+                const coverUrl = `https://placehold.co/400x550/${book.coverColor}/ffffff?text=${encodeURIComponent(book.title.split(' ').slice(0,2).join(' '))}&font=Montserrat`;
+
+                card.innerHTML = `
+                    <div class="relative h-48 w-full bg-gray-200 overflow-hidden">
+                        <img src="${coverUrl}" alt="Portada" class="w-full h-full object-cover transition-transform duration-300 hover:scale-105">
+                    </div>
+                    <div class="p-4 flex flex-col flex-grow">
+                        <p class="text-xs text-indigo-600 font-bold tracking-wide uppercase mb-1">${book.theme}</p>
+                        <h3 class="text-base font-bold text-gray-900 leading-tight mb-1 line-clamp-2" title="${book.title}">${book.title}</h3>
+                        <p class="text-sm text-gray-600 font-medium mb-3"><i class="fa-solid fa-pen-nib text-gray-400 mr-1 text-xs"></i>${book.author}</p>
+                        
+                        <div class="mt-auto pt-3 border-t border-gray-100 space-y-1">
+                            <p class="text-xs text-gray-500"><span class="font-semibold text-gray-700">Editorial:</span> ${book.publisher}</p>
+                            <p class="text-xs text-gray-500"><span class="font-semibold text-gray-700">Colección:</span> ${book.collection}</p>
+                        </div>
+                    </div>
+                `;
+                booksGrid.appendChild(card);
+            });
+        }
+        
+        function filterBooks() {
+            const normalizeText = (text) => text ? text.toString().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase() : "";
+            const searchKeywords = normalizeText(searchInput.value).split(' ').filter(term => term.trim() !== '');
+
+            const selectedTheme = themeFilter.value;
+            const selectedAuthor = authorFilter.value;
+            const selectedPublisher = publisherFilter.value;
+            const selectedCollection = collectionFilter.value;
+
+            const filteredBooks = libraryData.filter(book => {
+                const searchableText = `${normalizeText(book.title)} ${normalizeText(book.author)}`;
+                const matchesSearch = searchKeywords.length === 0 || searchKeywords.every(keyword => searchableText.includes(keyword));
+                const matchesTheme = selectedTheme === "" || book.theme === selectedTheme;
+                const matchesAuthor = selectedAuthor === "" || book.author === selectedAuthor;
+                const matchesPublisher = selectedPublisher === "" || book.publisher === selectedPublisher;
+                const matchesCollection = selectedCollection === "" || book.collection === selectedCollection;
+
+                return matchesSearch && matchesTheme && matchesAuthor && matchesPublisher && matchesCollection;
+            });
+
+            renderBooks(filteredBooks);
+        }
+
+        searchInput.addEventListener('input', filterBooks);
+        themeFilter.addEventListener('change', filterBooks);
+        authorFilter.addEventListener('change', filterBooks);
+        publisherFilter.addEventListener('change', filterBooks);
+        collectionFilter.addEventListener('change', filterBooks);
+
+        resetBtn.addEventListener('click', () => {
+            searchInput.value = ''; themeFilter.value = ''; authorFilter.value = '';
+            publisherFilter.value = ''; collectionFilter.value = '';
+            filterBooks(); 
+        });
+
+        async function loadDataFromGoogleSheets() {
+            booksGrid.innerHTML = `
+                <div class="col-span-full text-center py-12">
+                    <i class="fa-solid fa-circle-notch fa-spin text-4xl text-indigo-500 mb-4"></i>
+                    <h3 class="text-lg font-medium text-gray-900">Conectando con tu Excel...</h3>
+                </div>`;
+            booksGrid.classList.remove('hidden');
+            noResults.classList.add('hidden');
+
+            try {
+                let csvText = "";
+                
+                try {
+                    // Intento 1: Conexión directa
+                    const response = await fetch(GOOGLE_SHEETS_CSV_URL);
+                    if (!response.ok) throw new Error("Falla directa");
+                    csvText = await response.text();
+                } catch (e) {
+                    // Intento 2: Usar un puente (proxy) para esquivar el bloqueo de seguridad de la PC
+                    console.log("Bloqueo local detectado. Usando puente de conexión...");
+                    const proxyUrl = "https://api.allorigins.win/raw?url=" + encodeURIComponent(GOOGLE_SHEETS_CSV_URL);
+                    const proxyResponse = await fetch(proxyUrl);
+                    if (!proxyResponse.ok) throw new Error("Tu navegador bloqueó la conexión por completo.");
+                    csvText = await proxyResponse.text();
+                }
+                
+                const workbook = XLSX.read(csvText, {type: 'string'});
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                const excelRows = XLSX.utils.sheet_to_json(worksheet);
+                
+                if(excelRows.length === 0) {
+                     throw new Error("La planilla está vacía o Google todavía no la procesó.");
+                }
+
+                libraryData = excelRows.map((row, index) => {
+                    const randomColor = coverColors[Math.floor(Math.random() * coverColors.length)];
+                    const getCol = (names) => {
+                        const foundKey = Object.keys(row).find(key => names.includes(key.trim().toLowerCase()));
+                        return foundKey ? row[foundKey] : null;
+                    };
+
+                    return {
+                        id: index + 1,
+                        title: getCol(['titulo', 'título', 'nombre', 'libro']) || 'Sin Título',
+                        author: getCol(['autor', 'autora', 'escritores']) || 'Autor Desconocido',
+                        theme: getCol(['tema', 'categoría', 'categoria', 'genero', 'género']) || '-',
+                        publisher: getCol(['editorial', 'edicion', 'edición']) || '-',
+                        collection: getCol(['coleccion', 'colección', 'serie']) || '-',
+                        coverColor: randomColor
+                    };
+                });
+
+                populateFilters();
+                renderBooks(libraryData);
+                resultsCount.innerHTML = `<span class="text-green-600 font-bold"><i class="fa-solid fa-check-circle"></i> Catálogo listo (${libraryData.length} libros)</span>`;
+                
+            } catch (error) {
+                console.error("Error al cargar:", error);
+                booksGrid.innerHTML = '';
+                
+                resultsCount.innerHTML = `<span class="text-red-600 font-bold text-sm"><i class="fa-solid fa-triangle-exclamation"></i> Error al cargar los datos</span>`;
+                
+                noResults.classList.remove('hidden');
+                noResults.innerHTML = `
+                    <div class="bg-red-50 border-l-4 border-red-500 p-6 rounded-md text-left max-w-2xl mx-auto shadow-sm">
+                        <div class="flex items-center mb-3">
+                            <i class="fa-solid fa-circle-xmark text-3xl text-red-500 mr-3"></i>
+                            <h3 class="text-lg font-bold text-red-800">No pudimos leer los libros</h3>
+                        </div>
+                        <p class="text-red-700 mb-3 text-sm">El sistema reporta el siguiente problema: <b>${error.message}</b></p>
+                        <p class="font-bold text-red-800 mb-2 text-sm">Por favor, revisa estas 3 cosas en tu planilla de Google:</p>
+                        <ol class="list-decimal ml-5 text-red-700 space-y-2 text-sm">
+                            <li><b>¿Tienes libros anotados?</b> Si solo escribiste los títulos (Titulo, Autor...) pero no agregaste ningún libro debajo, dará error.</li>
+                            <li><b>¿Los títulos están en la fila correcta?</b> Las palabras "Titulo", "Autor", etc., deben estar obligatoriamente en la <b>Fila 1</b>. No dejes filas en blanco arriba.</li>
+                            <li><b>El tiempo de Google:</b> Si recién le diste al botón "Publicar", a veces Google tarda 3 a 5 minutos en activar el enlace. Espera un momento y vuelve a probar.</li>
+                        </ol>
+                    </div>
+                `;
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            loadDataFromGoogleSheets();
+        });
+
+    </script>
+</body>
+</html>
